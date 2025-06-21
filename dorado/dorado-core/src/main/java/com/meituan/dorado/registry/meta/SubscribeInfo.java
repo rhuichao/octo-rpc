@@ -34,6 +34,8 @@ public class SubscribeInfo {
 
     private Map<String, String> attachments = new HashMap<>();
 
+    private String registryGroup;
+
     public String getLocalAppkey() {
         return localAppkey;
     }
@@ -90,6 +92,14 @@ public class SubscribeInfo {
         this.attachments = attachments;
     }
 
+    public String getRegistryGroup() {
+        return registryGroup;
+    }
+
+    public void setRegistryGroup(String registryGroup) {
+        this.registryGroup = registryGroup;
+    }
+
     @Override
     public String toString() {
         StringBuilder info = new StringBuilder();
@@ -100,6 +110,7 @@ public class SubscribeInfo {
                 .append(",serialize=").append(serialize)
                 .append(",env=").append(env)
                 .append(",attachments=").append(attachments)
+                .append(",registryGroup=").append(registryGroup)
                 .append("}");
         return info.toString();
     }

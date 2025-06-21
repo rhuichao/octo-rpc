@@ -72,7 +72,7 @@ public class Constants {
     public static final int RECONN_FAIL_DEGRADE_TIME = DEFAULT_RECONN_INTERVAL * 5;
 
     public static final int NIO_CONN_THREADS = 1;
-    public static final int DEFAULT_IO_WORKER_THREAD_COUNT = Runtime.getRuntime().availableProcessors() * 2;
+    public static final int DEFAULT_IO_WORKER_THREAD_COUNT = System.getProperty("dorado_netty_client_io_thread_count") == null ? Runtime.getRuntime().availableProcessors() * 2 : Integer.parseInt(System.getProperty("dorado_netty_client_io_thread_count"));
     public static final int DEFAULT_BIZ_CORE_WORKER_THREAD_COUNT = 10;
     public static final int DEFAULT_BIZ_MAX_WORKER_THREAD_COUNT = 256;
     public static final int DEFAULT_BIZ_WORKER_QUEUES = 0;

@@ -88,12 +88,12 @@ public class ThriftIDLSerializer extends ThriftMessageSerializer {
     }
 
     @Override
-    protected Object deserialize4Thrift(byte[] buff, Class<?> iface, Map<String, Object> attachments) throws Exception {
+    protected Object deserialize4Thrift(byte[] buff, int offset, int length, Class<?> iface, Map<String, Object> attachments) throws Exception {
         TraceTimeline timeline = TraceTimeline.newRecord(CommonUtil.objectToBool(attachments.get(Constants.TRACE_IS_RECORD_TIMELINE), false),
                 TraceTimeline.DECODE_START_TS);
 
         Object obj = null;
-        TMemoryInputTransport transport = new TMemoryInputTransport(buff);
+        TMemoryInputTransport transport = new TMemoryInputTransport(buff, offset, length);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
         TMessage message = protocol.readMessageBegin();
         if (message.type == TMessageType.CALL) {
@@ -226,7 +226,7 @@ public class ThriftIDLSerializer extends ThriftMessageSerializer {
             }
             rpcResult.setReturnVal(realResult);
         } else if (message.type == TMessageType.EXCEPTION) {
-            TApplicationException exception = TApplicationException.read(protocol);
+            TApplicationException exception = TApplicationException.readFrom(protocol);
             MetaUtil.wrapException(exception, response);
         }
         if (!response.isOctoProtocol() && hasOldRequestHeader(protocol)) {

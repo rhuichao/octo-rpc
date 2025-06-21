@@ -54,7 +54,7 @@ public class ServicePublisher extends ServiceBootstrap {
     }
 
     public static void publishService(ProviderConfig config) {
-        initHttpServer(RpcRole.PROVIDER);
+//        initHttpServer(RpcRole.PROVIDER);
 
         initAppkey(config.getAppkey());
         ServerFactory serverFactory = ExtensionLoader.getExtension(ServerFactory.class);
@@ -113,6 +113,7 @@ public class ServicePublisher extends ServiceBootstrap {
         info.setVersion(VersionUtil.getDoradoVersion());
         info.setAttachments(attachments);
         info.setEnv(providerConfig.getEnv());
+        info.setRegistryGroup(providerConfig.getRegistryGroup());
         return info;
     }
 

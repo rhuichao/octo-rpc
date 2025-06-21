@@ -384,9 +384,7 @@ public abstract class OctoCodec implements Codec {
             throw new ProtocolException("Message length less than need length");
         }
         try {
-            byte[] bodyBytes = new byte[bodyLength];
-            System.arraycopy(buffer, TOTAL_LEN_FIELD_LENGTH, bodyBytes, 0, bodyLength);
-            return ThriftCodecSerializer.decodeThrift(bodyBytes, attachments);
+            return ThriftCodecSerializer.decodeThrift(buffer, TOTAL_LEN_FIELD_LENGTH, bodyLength, attachments);
         } catch (Exception e) {
             if (e instanceof ProtocolException) {
                 throw (ProtocolException) e;

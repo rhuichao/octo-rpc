@@ -16,7 +16,12 @@
 package com.meituan.dorado.registry.zookeeper.curator;
 
 import com.google.common.collect.Sets;
+import com.meituan.dorado.common.exception.ZkNodeExistsException;
+import com.meituan.dorado.registry.zookeeper.NotifyRetryManager;
+import com.meituan.dorado.registry.zookeeper.util.NotifyMessage;
 import com.meituan.dorado.registry.zookeeper.util.ZooKeeperNodeInfo;
+import org.apache.commons.lang3.RandomUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -55,11 +60,22 @@ public class ZookeeperClient {
         this.address = address;
         try {
             RetryPolicy retryPolicy = new ExponentialBackoffRetry(1000, 3);
-            client = CuratorFrameworkFactory.builder().connectString(address)
+//            client = CuratorFrameworkFactory.builder().connectString(address)
+//                    .sessionTimeoutMs(5000)//会话超时时间
+//                    .connectionTimeoutMs(5000)//连接超时时间
+//                    .retryPolicy(retryPolicy)
+//                    .build();
+
+            int isZk34Version = NumberUtils.toInt(System.getProperty("assign_zk_3.4_version"), 0);
+            CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory.builder().connectString(address)
                     .sessionTimeoutMs(5000)//会话超时时间
                     .connectionTimeoutMs(5000)//连接超时时间
-                    .retryPolicy(retryPolicy)
-                    .build();
+                    .retryPolicy(retryPolicy);
+            if (isZk34Version == 1){
+                builder.zk34CompatibilityMode(true);
+            }
+
+            this.client = builder.build();
             client.getConnectionStateListenable().addListener(new ConnectionStateListener() {
                 @Override
                 public void stateChanged(CuratorFramework client, ConnectionState state) {
@@ -82,6 +98,7 @@ public class ZookeeperClient {
                 }
             });
             client.start();
+            NotifyRetryManager.getINSTANCE().init();
         } catch (Throwable e) {
             logger.error("ZookeeperClient[{}]  init failed.", address, e);
             throw e;
@@ -252,29 +269,51 @@ public class ZookeeperClient {
                 childrenCacheListener = new PathChildrenCacheListener() {
                     @Override
                     public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) throws Exception {
-                        switch (event.getType()) {
-                            case CHILD_ADDED: {
-                                String childNodePath = ZKPaths.getNodeFromPath(event.getData().getPath());
-                                logger.info("Node added: {}", childNodePath);
-                                String childPath = path + ZooKeeperNodeInfo.PATH_SEPARATOR + childNodePath;
-                                listener.childNodeAdded(childPath, childNodePath);
-                                break;
+                        NotifyRetryManager.LOCK.lock();
+                        String childPath = null;
+                        String childNodePath = null;
+                        try {
+                            boolean success = true;
+                            switch (event.getType()) {
+                                case CHILD_ADDED: {
+                                    childNodePath = ZKPaths.getNodeFromPath(event.getData().getPath());
+                                    logger.info("Node added: {}", childNodePath);
+                                    randomSleep();
+                                    childPath = path + ZooKeeperNodeInfo.PATH_SEPARATOR + childNodePath;
+                                    success = listener.childNodeAdded(childPath, childNodePath);
+                                    break;
+                                }
+                                case CHILD_UPDATED: {
+                                    childNodePath = ZKPaths.getNodeFromPath(event.getData().getPath());
+                                    logger.info("Node changed: {}", childNodePath);
+                                    randomSleep();
+                                    childPath = path + ZooKeeperNodeInfo.PATH_SEPARATOR + childNodePath;
+                                    success = listener.childNodeUpdated(childPath, childNodePath);
+                                    break;
+                                }
+                                case CHILD_REMOVED: {
+                                    childNodePath = ZKPaths.getNodeFromPath(event.getData().getPath());
+                                    logger.info("Node removed: {}", childNodePath);
+                                    childPath = path + ZooKeeperNodeInfo.PATH_SEPARATOR + childNodePath;
+                                    success = listener.childNodeRemoved(childPath, childNodePath);
+                                    break;
+                                }
+                                default:
                             }
-                            case CHILD_UPDATED: {
-                                String childNodePath = ZKPaths.getNodeFromPath(event.getData().getPath());
-                                logger.info("Node changed: {}", childNodePath);
-                                String childPath = path + ZooKeeperNodeInfo.PATH_SEPARATOR + childNodePath;
-                                listener.childNodeUpdated(childPath, childNodePath);
-                                break;
+                            if(!success){
+                                logger.error("execute zk notify fail,eventType:{},path:{}", event.getType(), childPath);
+                                NotifyRetryManager.addNotifyRetryMsg(NotifyMessage.build(event.getType(), childPath, childNodePath, listener));
+                            }else {
+                                logger.info("execute zk notify success,eventType:{},path:{}", event.getType(), childPath);
+                                NotifyRetryManager.removeNotifyRetryMsg(NotifyMessage.build(event.getType(), childPath, childNodePath, listener));
                             }
-                            case CHILD_REMOVED: {
-                                String childNodePath = ZKPaths.getNodeFromPath(event.getData().getPath());
-                                logger.info("Node removed: {}", childNodePath);
-                                String childPath = path + ZooKeeperNodeInfo.PATH_SEPARATOR + childNodePath;
-                                listener.childNodeRemoved(childPath, childNodePath);
-                                break;
-                            }
-                            default:
+                        }catch (ZkNodeExistsException e){
+                            logger.warn("execute zk notify exception,node had removed,eventType:{},path:{}", event.getType(), childPath);
+                        } catch (Exception e){
+                            logger.error("execute zk notify exception,eventType:{},path:{}", event.getType(), childPath, e);
+                            NotifyRetryManager.addNotifyRetryMsg(NotifyMessage.build(event.getType(), childPath, childNodePath, listener));
+                        }finally {
+                            NotifyRetryManager.LOCK.unlock();
                         }
                     }
                 };
@@ -285,6 +324,14 @@ public class ZookeeperClient {
             }
         } catch (Exception e) {
             logger.error("ZookeeperClient addChildNodeChangeListener[{}] failed.", path, e);
+        }
+    }
+
+    private void randomSleep(){
+        try {
+            Thread.sleep(RandomUtils.nextInt(1,11));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

@@ -20,7 +20,7 @@
     <parent>
         <artifactId>dorado-test</artifactId>
         <groupId>com.meituan.octo</groupId>
-        <version>1.0.0</version>
+        <version>1.0.19-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 

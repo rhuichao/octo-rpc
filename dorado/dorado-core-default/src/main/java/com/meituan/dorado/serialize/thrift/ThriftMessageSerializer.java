@@ -29,7 +29,7 @@ public abstract class ThriftMessageSerializer {
 
     protected abstract Object deserialize4OctoThrift(byte[] buff, Object obj) throws Exception;
 
-    protected abstract Object deserialize4Thrift(byte[] buff, Class<?> iface, Map<String, Object> attachments) throws Exception;
+    protected abstract Object deserialize4Thrift(byte[] buff, int offset, int length, Class<?> iface, Map<String, Object> attachments) throws Exception;
 
     public static class ThriftMessageInfo {
         String methodName;

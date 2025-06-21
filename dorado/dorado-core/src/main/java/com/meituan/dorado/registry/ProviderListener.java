@@ -23,10 +23,10 @@ public interface ProviderListener {
 
     void notify(List<Provider> providers);
 
-    void added(List<Provider> providers);
+    boolean added(List<Provider> providers);
 
-    void updated(List<Provider> providers);
+    boolean updated(List<Provider> providers);
 
-    void removed(List<String> ipPorts);
+    boolean removed(List<String> ipPorts);
 
 }

@@ -16,7 +16,9 @@
 package com.meituan.dorado.registry.zookeeper;
 
 import com.meituan.dorado.common.Constants;
+import com.meituan.dorado.common.exception.DoradoException;
 import com.meituan.dorado.common.exception.RegistryException;
+import com.meituan.dorado.common.exception.ZkNodeExistsException;
 import com.meituan.dorado.common.util.NetUtil;
 import com.meituan.dorado.registry.DiscoveryService;
 import com.meituan.dorado.registry.ProviderListener;
@@ -28,6 +30,7 @@ import com.meituan.dorado.registry.zookeeper.curator.StateChangeListener;
 import com.meituan.dorado.registry.zookeeper.curator.ZookeeperClient;
 import com.meituan.dorado.registry.zookeeper.curator.ZookeeperManager;
 import com.meituan.dorado.registry.zookeeper.util.ZooKeeperNodeInfo;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,6 +79,7 @@ public class ZookeeperDiscoveryService implements DiscoveryService {
                 zkClient.addChildNodeChangeListener(path, listener);
                 List<Provider> providers = genProviderList(path, info);
                 notifyListener.notify(providers);
+                registerConsumer(info);
                 logger.info("Subscribe on zookeeper[{}]: remoteAppkey={}, serviceName={}", address, info.getRemoteAppkey(), info.getServiceName());
             } else {
                 logger.warn("{} has subscribed service", info);
@@ -95,6 +99,7 @@ public class ZookeeperDiscoveryService implements DiscoveryService {
             } else {
                 logger.info("Have unsubscribe on zookeeper[{}]: remoteAppkey={}, serviceName={}", address, info.getRemoteAppkey(), info.getServiceName());
             }
+            unregisterConsumer(info);
         } catch (Throwable e) {
             throw new RegistryException("Failed to unsubscribe service " + info.getServiceName(), e);
         }
@@ -113,39 +118,42 @@ public class ZookeeperDiscoveryService implements DiscoveryService {
     protected NodeChangeListener buildNodeChangeListener(final SubscribeInfo info, final ProviderListener notifyListener) {
         NodeChangeListener listener = new NodeChangeListener() {
             @Override
-            public void childNodeAdded(String childPath, String childNodePath) {
+            public boolean childNodeAdded(String childPath, String childNodePath) {
                 Provider provider = genProvider(childPath, info);
                 if (provider != null) {
                     List<Provider> providerList = new ArrayList<>();
                     providerList.add(provider);
-                    notifyListener.added(providerList);
+                    return notifyListener.added(providerList);
                 }
+                return true;
             }
 
             @Override
-            public void childNodeUpdated(String childPath, String childNodePath) {
+            public boolean childNodeUpdated(String childPath, String childNodePath) {
                 Provider provider = genProvider(childPath, info);
                 if (provider != null) {
                     List<Provider> providerList = new ArrayList<>();
                     providerList.add(provider);
-                    notifyListener.updated(providerList);
+                    return notifyListener.updated(providerList);
                 } else {
                     // 如状态变更为不可用
                     if (NetUtil.isIpPortStr(childNodePath)) {
                         List<String> ipPorts = new ArrayList<>();
                         ipPorts.add(childNodePath);
-                        notifyListener.removed(ipPorts);
+                        return notifyListener.removed(ipPorts);
                     }
                 }
+                return true;
             }
 
             @Override
-            public void childNodeRemoved(String childPath, String childNodePath) {
+            public boolean childNodeRemoved(String childPath, String childNodePath) {
                 if (NetUtil.isIpPortStr(childNodePath)) {
                     List<String> ipPorts = new ArrayList<>();
                     ipPorts.add(childNodePath);
-                    notifyListener.removed(ipPorts);
+                    return notifyListener.removed(ipPorts);
                 }
+                return true;
             }
         };
         return listener;
@@ -159,8 +167,14 @@ public class ZookeeperDiscoveryService implements DiscoveryService {
             if (provider != null) {
                 return provider;
             }
-        } catch (Exception e) {
-            logger.warn("Get nodeData={} from path={} to generate Provider failed.", nodeData, childPath, e);
+        }catch (KeeperException e){
+            if(e.code() == KeeperException.Code.NODEEXISTS){
+                throw new ZkNodeExistsException("Get nodeData=" + nodeData + " from path=" + childPath + " to generate Provider failed.");
+            }
+            throw new DoradoException("Get nodeData=" + nodeData + " from path=" + childPath + " to generate Provider failed.");
+        }
+        catch (Exception e) {
+            throw new DoradoException("Get nodeData=" + nodeData + " from path=" + childPath + " to generate Provider failed.");
         }
         return null;
     }
@@ -183,10 +197,37 @@ public class ZookeeperDiscoveryService implements DiscoveryService {
     }
 
     private String generateNodePath(SubscribeInfo info) {
-        String envName = Constants.EnvType.getEnvType(info.getEnv()).getEnvName();
-        StringBuilder pathBuilder = new StringBuilder(ZooKeeperNodeInfo.PATH_SEPARATOR).append(ZooKeeperNodeInfo.ROOT_NAME)
-                .append(ZooKeeperNodeInfo.PATH_SEPARATOR).append(envName).append(ZooKeeperNodeInfo.PATH_SEPARATOR)
+        StringBuilder pathBuilder = new StringBuilder(info.getRegistryGroup()).append(ZooKeeperNodeInfo.PATH_SEPARATOR)
                 .append(info.getRemoteAppkey()).append(ZooKeeperNodeInfo.PATH_SEPARATOR).append(ZooKeeperNodeInfo.PROVIDER);
         return pathBuilder.toString();
     }
+
+    private String generateConsumerNodePath(SubscribeInfo info) {
+        StringBuilder pathBuilder = new StringBuilder(info.getRegistryGroup()).append(ZooKeeperNodeInfo.PATH_SEPARATOR)
+                .append(info.getRemoteAppkey()).append(ZooKeeperNodeInfo.PATH_SEPARATOR).append(ZooKeeperNodeInfo.CONSUMER)
+                .append(ZooKeeperNodeInfo.PATH_SEPARATOR).append(NetUtil.getLocalHost())
+                .append(Constants.COLON).append(ZooKeeperNodeInfo.getPid());
+        return pathBuilder.toString();
+    }
+
+    private synchronized void registerConsumer(SubscribeInfo info) {
+        try {
+            String path = generateConsumerNodePath(info);
+            zkClient.createNode(path, ZooKeeperNodeInfo.genConsumerNodeData(info));
+            logger.info("Register consumer on zookeeper[{}] path={}, info={}", address, path, info);
+        } catch (Throwable e) {
+            throw new RegistryException("Failed to register consumer: " + info.getLocalAppkey(), e);
+        }
+    }
+
+    private synchronized void unregisterConsumer(SubscribeInfo info) {
+        try {
+            String path = generateConsumerNodePath(info);
+            zkClient.delete(path);
+            logger.info("Unregister consumer on zookeeper[{}] path={}, info{}", address, path, info);
+        } catch (Throwable e) {
+            throw new RegistryException("Failed to unregister consumer: " + info.getLocalAppkey(), e);
+        }
+    }
+
 }

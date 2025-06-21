@@ -31,7 +31,7 @@ public class ThriftAnnotationSerializer extends ThriftMessageSerializer {
     }
 
     @Override
-    protected Object deserialize4Thrift(byte[] buff, Class<?> iface, Map<String, Object> attachments) throws Exception {
+    protected Object deserialize4Thrift(byte[] buff, int offset, int length, Class<?> iface, Map<String, Object> attachments) throws Exception {
         return null;
     }
 }

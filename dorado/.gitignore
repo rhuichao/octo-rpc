@@ -28,6 +28,7 @@ dependency-reduced-pom.xml
 .gradle/
 gradle/
 gradlew*
+*.versionsBackup
 
 # system ignore
 .DS_Store

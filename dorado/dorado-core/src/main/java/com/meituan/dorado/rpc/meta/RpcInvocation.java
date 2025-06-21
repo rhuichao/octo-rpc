@@ -75,7 +75,7 @@ public class RpcInvocation {
         if (value == null) {
             return;
         }
-        if (containsAttachment(key) && FRAMEWORK_PARAM_KEYS.contains(key)) {
+        if (containsAttachment(key) && FRAMEWORK_PARAM_KEYS.contains(key) && !Constants.RPC_REQUEST.equals(key)) {
             logger.warn("Framework param[{}] cannot be put repeatedly.", key);
             return;
         }

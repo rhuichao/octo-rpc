@@ -17,9 +17,9 @@ package com.meituan.dorado.registry.zookeeper.curator;
 
 public interface NodeChangeListener {
 
-    void childNodeAdded(String childPath, String childNodePath);
+    boolean childNodeAdded(String childPath, String childNodePath);
 
-    void childNodeUpdated(String childPath, String childNodePath);
+    boolean childNodeUpdated(String childPath, String childNodePath);
 
-    void childNodeRemoved(String childPath, String childNodePath);
+    boolean childNodeRemoved(String childPath, String childNodePath);
 }

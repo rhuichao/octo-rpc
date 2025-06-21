@@ -81,9 +81,7 @@ public class ZookeeperRegistryService implements RegistryService {
     }
 
     protected String generateNodePath(RegistryInfo info) {
-        String envName = Constants.EnvType.getEnvType(info.getEnv()).getEnvName();
-        StringBuilder pathBuilder = new StringBuilder(ZooKeeperNodeInfo.PATH_SEPARATOR).append(ZooKeeperNodeInfo.ROOT_NAME)
-                .append(ZooKeeperNodeInfo.PATH_SEPARATOR).append(envName).append(ZooKeeperNodeInfo.PATH_SEPARATOR)
+        StringBuilder pathBuilder = new StringBuilder(info.getRegistryGroup()).append(ZooKeeperNodeInfo.PATH_SEPARATOR)
                 .append(info.getAppkey()).append(ZooKeeperNodeInfo.PATH_SEPARATOR)
                 .append(ZooKeeperNodeInfo.PROVIDER).append(ZooKeeperNodeInfo.PATH_SEPARATOR)
                 .append(info.getIp()).append(Constants.COLON).append(info.getPort());

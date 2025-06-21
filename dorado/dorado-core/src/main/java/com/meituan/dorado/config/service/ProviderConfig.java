@@ -29,13 +29,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
-public class ProviderConfig {
+public class ProviderConfig implements Disposable {
+    public static final String DEFAULT_REGISTRY_GROUP = "/thrift";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProviderConfig.class);
 
     protected String appkey;
     // mns, zookeeper://address?k=v&k=v; 没配置则从SPI中获取
     private String registry;
+
+    //zk path, /boss/thrift
+    private String registryGroup = DEFAULT_REGISTRY_GROUP;
 
     // 协议
     private String protocol = Constants.ProtocolType.Thrift.getName();
@@ -66,8 +70,6 @@ public class ProviderConfig {
     private List<Filter> filters = Collections.emptyList();
     private String env = Constants.EnvType.TEST.getEnvName();
 
-    private volatile ShutDownHook hook;
-
     private volatile boolean destroyed;
 
     public void init() {
@@ -83,7 +85,7 @@ public class ProviderConfig {
             serviceConfig.check();
             serviceConfig.configTrace(appkey);
         }
-        addShutDownHook();
+        //addShutDownHook();
         ServicePublisher.publishService(this);
     }
 
@@ -103,12 +105,9 @@ public class ProviderConfig {
         destroyed = true;
     }
 
-    protected synchronized void addShutDownHook() {
-        if (hook == null) {
-            hook = new ShutDownHook(this);
-            Runtime.getRuntime().addShutdownHook(hook);
-        }
-    }
+//    protected synchronized void addShutDownHook() {
+//        ShutdownHook.register(this);
+//    }
 
     public List<String> getServiceList() {
         List<String> serviceList = new ArrayList<>();
@@ -250,17 +249,11 @@ public class ProviderConfig {
         this.threadPoolQueue = threadPoolQueue;
     }
 
-    class ShutDownHook extends Thread {
-        private ProviderConfig config;
+    public String getRegistryGroup() {
+        return registryGroup;
+    }
 
-        public ShutDownHook(ProviderConfig config) {
-            this.config = config;
-        }
-
-        @Override
-        public void run() {
-            hook = null;
-            config.destroy();
-        }
+    public void setRegistryGroup(String registryGroup) {
+        this.registryGroup = registryGroup;
     }
 }

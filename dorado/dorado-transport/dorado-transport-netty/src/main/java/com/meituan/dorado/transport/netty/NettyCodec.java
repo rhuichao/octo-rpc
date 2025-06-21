@@ -17,17 +17,18 @@ package com.meituan.dorado.transport.netty;
 
 import com.meituan.dorado.codec.Codec;
 import com.meituan.dorado.common.exception.ProtocolException;
+import com.meituan.dorado.common.exception.RequestTimeoutException;
 import com.meituan.dorado.common.extension.ExtensionLoader;
 import com.meituan.dorado.transport.LengthDecoder;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageCodec;
+import io.netty.handler.codec.ByteToMessageDecoder;
+import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class NettyCodec extends ByteToMessageCodec {
 
@@ -67,22 +68,83 @@ public class NettyCodec extends ByteToMessageCodec {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List out) throws Exception {
-        int totalLength = lengthDecoder.decodeLength(in.nioBuffer());
-        int readableBytes = in.readableBytes();
-        if (totalLength < 0) {
-            logger.debug("Not getting enough bytes to get totalLength.");
-            return;
-        }
-        if (readableBytes < totalLength) {
-            logger.debug("Not getting enough bytes, need {} bytes but got {} bytes", totalLength,
-                    readableBytes);
-            return;
-        }
+        String uuid = UUID.randomUUID().toString();
+            int totalLength = lengthDecoder.decodeLength(in.nioBuffer());
+            int readableBytes = in.readableBytes();
+            if(logger.isDebugEnabled()) {
+                logger.debug("uuid1:{},readableBytes:{},totalLength:{}", uuid, readableBytes, totalLength);
+            }
+            if (totalLength < 0) {
+                logger.debug("Not getting enough bytes to get totalLength.");
+                return;
+            }
+            if (readableBytes < totalLength) {
+                logger.debug("Not getting enough bytes, need {} bytes but got {} bytes", totalLength,
+                        readableBytes);
+                return;
+            }
 
-        NettyChannel nettyChannel = ChannelManager.getOrAddChannel(ctx.channel());
-        byte[] buffer = new byte[totalLength];
-        in.readBytes(buffer);
+            NettyChannel nettyChannel = ChannelManager.getOrAddChannel(ctx.channel());
+            byte[] buffer = new byte[totalLength];
+            in.readBytes(buffer);
+            if(logger.isDebugEnabled()) {
+                logger.debug("uuid2:{},getResByte:{}", uuid, Hex.encodeHexString(buffer, true));
+            }
 
-        out.add(codec.decode(nettyChannel, buffer, attachments));
+//
+            try {
+                out.add(codec.decode(nettyChannel, buffer, attachments));
+            }catch (RequestTimeoutException e){
+                logger.warn("Request has removed, cause Timeout happened earlier");
+            }catch (Exception e){
+                if(e.getCause() instanceof RequestTimeoutException){
+                    logger.warn("Request has removed, cause Timeout happened earlier");
+                    return;
+                }
+                logger.error("decode exception,", e);
+            }
+
+       // }
     }
+
+    private final ByteToMessageDecoder decoder = new ByteToMessageDecoder() {
+        @Override
+        public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+            NettyCodec.this.decode(ctx, in, out);
+        }
+
+        @Override
+        protected void decodeLast(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+            NettyCodec.this.decodeLast(ctx, in, out);
+        }
+    };
+
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        if(logger.isDebugEnabled()) {
+            logger.debug("channelRead begin");
+        }
+        try {
+            decoder.channelRead(ctx, msg);
+        }catch (Exception e){
+            logger.error("read error",e);
+            ctx.channel();
+        }
+        if(logger.isDebugEnabled()) {
+            logger.debug("channelRead finish");
+        }
+    }
+
+
+    @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+        if(logger.isDebugEnabled()) {
+            logger.debug("channelReadComplete begin");
+        }
+        decoder.channelReadComplete(ctx);
+        if(logger.isDebugEnabled()) {
+            logger.debug("channelReadComplete finish");
+        }
+    }
+
 }

@@ -15,6 +15,7 @@
  */
 package com.meituan.dorado.transport;
 
+import com.meituan.dorado.bootstrap.invoker.ServiceInvocationRepository;
 import com.meituan.dorado.codec.Codec;
 import com.meituan.dorado.common.Constants;
 import com.meituan.dorado.common.exception.TransportException;
@@ -183,6 +184,16 @@ public abstract class AbstractClient implements Client {
         logger.info("Closing {} connect to server {}", getClass().getName(), remoteAddress);
         closed = true;
         try {
+            int maxTimeout = getMaxTimeout();
+            long start = System.currentTimeMillis();
+            while (ServiceInvocationRepository.hasFuture(this.getChannel())
+                    && System.currentTimeMillis() - start < maxTimeout) {
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
             handler.destroy();
             disconnect();
             doClose();
@@ -216,17 +227,24 @@ public abstract class AbstractClient implements Client {
         return handler;
     }
 
-    private void connectStatusCheck() {
+    private synchronized void connectStatusCheck() {
         if (reconnectExecutorFuture == null || reconnectExecutorFuture.isCancelled()) {
             Runnable connectStatusCheckTask = new Runnable() {
                 @Override
                 public void run() {
                     try {
+                        logger.info(Thread.currentThread().getName() + ",connectStatusCheck task begin");
                         doConnect();
                         if (isDegrade.get()) {
                             NodeDegrade.weightRecover(invoker);
                             isDegrade.set(false);
                         }
+                        if(reconnectExecutorFuture == null){
+                            logger.info(Thread.currentThread().getName() + ", reconnectExecutorFuture is null");
+                        }else{
+                            logger.info(Thread.currentThread().getName() + ", reconnectExecutorFuture is isDone:"+reconnectExecutorFuture.isDone() +",hashCode:"+ reconnectExecutorFuture.hashCode());
+                        }
+
                         stopConnectStatusCheck();
                     } catch (Throwable t) {
                         String message = "Failed to connect to the server "
@@ -252,7 +270,7 @@ public abstract class AbstractClient implements Client {
             if (reconnectExecutorFuture != null && !reconnectExecutorFuture.isDone()) {
                 reconnectExecutorFuture.cancel(true);
                 reconnectExecutor.purge();
-                logger.info("Stop check {} connection status", getRemoteAddress());
+                logger.info("Stop check {} connection status,reconnectExecutorFuture isDone:{},hashCode:{}", getRemoteAddress(), reconnectExecutorFuture.isDone(),reconnectExecutorFuture.hashCode());
             }
         } catch (Throwable e) {
             logger.warn("StopConnectStatusCheck failed", e);
@@ -268,4 +286,17 @@ public abstract class AbstractClient implements Client {
     protected abstract int getTimeout();
 
     protected abstract void doConnect();
+
+    protected int getMaxTimeout(){
+        int timeout = clientConfig.getTimeout();
+        if(clientConfig.getMethodTimeout() == null){
+            return timeout;
+        }
+        for (Integer value : clientConfig.getMethodTimeout().values()) {
+            if(value != null && value > timeout){
+                timeout = value;
+            }
+        }
+        return timeout;
+    }
 }

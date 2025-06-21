@@ -22,6 +22,8 @@ import com.meituan.dorado.common.extension.ExtensionLoader;
 import com.meituan.dorado.common.thread.DefaultThreadFactory;
 import com.meituan.dorado.rpc.ResponseFuture;
 import com.meituan.dorado.rpc.handler.HandlerFactory;
+import com.meituan.dorado.transport.Channel;
+import com.meituan.dorado.transport.Client;
 import com.meituan.dorado.transport.meta.Request;
 import com.meituan.dorado.transport.meta.Response;
 import io.netty.util.HashedWheelTimer;
@@ -42,6 +44,7 @@ public class ServiceInvocationRepository {
     private static final Logger logger = LoggerFactory.getLogger(ServiceInvocationRepository.class);
 
     private static final ConcurrentMap<Long, Request> invocations = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<Long, Channel> seqId2Channels = new ConcurrentHashMap<>();
     private static final ConcurrentMap<Long, ResponseFuture> futures = new ConcurrentHashMap<>();
 
     // 时间间隔：10ms  槽数：512
@@ -66,8 +69,15 @@ public class ServiceInvocationRepository {
 
     public static void putRequestAndFuture(Request request, ResponseFuture future) {
         long seqId = request.getSeq();
+        if(logger.isDebugEnabled()) {
+            logger.debug("pub future,seqId:{}", seqId);
+        }
         invocations.put(seqId, request);
         futures.put(seqId, future);
+        Client client = request.getClient();
+        if(client != null){
+            seqId2Channels.put(seqId, client.getChannel());
+        }
     }
 
     public static Request getRequest(long sequence) {
@@ -75,7 +85,11 @@ public class ServiceInvocationRepository {
     }
 
     public static ResponseFuture removeAndGetFuture(long sequence) {
+        if(logger.isDebugEnabled()) {
+            logger.debug("remove future,seqId:{}", sequence);
+        }
         invocations.remove(sequence);
+        seqId2Channels.remove(sequence);
         return futures.remove(sequence);
     }
 
@@ -111,4 +125,9 @@ public class ServiceInvocationRepository {
             logger.error("Add new timeout Task exception.", e);
         }
     }
+
+    public static boolean hasFuture(Channel channel) {
+        return seqId2Channels.containsValue(channel);
+    }
+
 }

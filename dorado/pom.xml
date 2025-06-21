@@ -22,7 +22,7 @@
     <groupId>com.meituan.octo</groupId>
     <artifactId>dorado-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.0.0</version>
+    <version>1.0.19-SNAPSHOT</version>
     <modules>
         <module>dorado-demo</module>
         <module>dorado-test</module>
@@ -36,19 +36,33 @@
         <module>dorado-trace</module>
     </modules>
 
+    <!-- 发布位置配置 -->
+    <distributionManagement>
+        <repository>
+            <id>nexus-releases</id>
+            <name>Internal Release Repository</name>
+            <url></url>
+        </repository>
+        <snapshotRepository>
+            <id>nexus-snapshots</id>
+            <name>Internal Snapshot Repository</name>
+            <url></url>
+        </snapshotRepository>
+    </distributionManagement>
+
     <properties>
         <dorado.version>${project.version}</dorado.version>
         <octo-mns.version>1.0.0</octo-mns.version>
         <cat.version>3.0.0</cat.version>
 
         <commons-lang3>3.7</commons-lang3>
-        <netty.version>4.1.25.Final</netty.version>
-        <libthrift.version>0.9.3</libthrift.version>
+        <netty.version>4.1.26.Final</netty.version>
+        <libthrift.version>0.11.0</libthrift.version>
         <snappy.version>1.1.1.6</snappy.version>
         <swift.version>0.14.0</swift.version>
         <junit.version>4.10</junit.version>
         <slf4j.version>1.7.25</slf4j.version>
-        <log4j2.version>2.11.0</log4j2.version>
+        <log4j2.version>2.16.0</log4j2.version>
         <spring.framework.version>4.3.20.RELEASE</spring.framework.version>
         <jackson.version>2.9.9</jackson.version>
         <zookeeper.version>3.4.12</zookeeper.version>
@@ -352,6 +366,11 @@
                         <doclint>none</doclint>
                     </configuration>
                 </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>versions-maven-plugin</artifactId>
+                    <version>2.7</version>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -376,6 +395,10 @@
                 <!--<groupId>org.jacoco</groupId>-->
                 <!--<artifactId>jacoco-maven-plugin</artifactId>-->
             <!--</plugin>-->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+            </plugin>
         </plugins>
 
         <resources>

@@ -35,7 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class ReferenceConfig<T> extends AbstractConfig {
+public class ReferenceConfig<T> extends AbstractConfig implements Disposable {
 
     // 必配项 服务端 appkey
     private String remoteAppkey;
@@ -44,6 +44,9 @@ public class ReferenceConfig<T> extends AbstractConfig {
     // ---连接相关---
     // mns, zookeeper://address
     private String registry;
+
+    private String registryGroup = ProviderConfig.DEFAULT_REGISTRY_GROUP;
+
     // 直连配置ip:port, 可配置多个"," 分隔
     private String directConnAddress;
     // 用于直连时 是否使用统一协议的配置
@@ -79,13 +82,16 @@ public class ReferenceConfig<T> extends AbstractConfig {
 
     private String env = Constants.EnvType.TEST.getEnvName();
 
+    /**
+     * 扩展参数
+     */
+    private Map<String, Object> extParms;
+
     // 接口代理类
     private transient volatile T proxyObj;
     private transient ClusterHandler<?> clusterHandler;
 
     private volatile boolean destroyed;
-    private volatile ShutDownHook hook;
-
 
     public synchronized T get() {
         if (destroyed) {
@@ -121,7 +127,7 @@ public class ReferenceConfig<T> extends AbstractConfig {
 
         ProxyFactory proxyFactory = ExtensionLoader.getExtension(ProxyFactory.class);
         proxyObj = (T) proxyFactory.getProxy(clusterHandler);
-        addShutDownHook();
+        //addShutDownHook();
     }
 
     private void configLoadBalance() {
@@ -140,12 +146,9 @@ public class ReferenceConfig<T> extends AbstractConfig {
         RouterFactory.setRouter(serviceName, routerPolicy);
     }
 
-    protected synchronized void addShutDownHook() {
-        if (hook == null) {
-            hook = new ShutDownHook(this);
-            Runtime.getRuntime().addShutdownHook(hook);
-        }
-    }
+//    protected synchronized void addShutDownHook() {
+//        ShutdownHook.register(this);
+//    }
 
     /**
      * 调用端相关参数检查
@@ -345,17 +348,19 @@ public class ReferenceConfig<T> extends AbstractConfig {
         this.env = env;
     }
 
-    class ShutDownHook extends Thread {
-        private ReferenceConfig config;
+    public String getRegistryGroup() {
+        return registryGroup;
+    }
 
-        public ShutDownHook(ReferenceConfig config) {
-            this.config = config;
-        }
+    public void setRegistryGroup(String registryGroup) {
+        this.registryGroup = registryGroup;
+    }
 
-        @Override
-        public void run() {
-            hook = null;
-            config.destroy();
-        }
+    public Map<String, Object> getExtParms() {
+        return extParms;
+    }
+
+    public void setExtParms(Map<String, Object> extParms) {
+        this.extParms = extParms;
     }
 }

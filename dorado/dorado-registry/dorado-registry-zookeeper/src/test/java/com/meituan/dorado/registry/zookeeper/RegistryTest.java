@@ -60,18 +60,19 @@ public class RegistryTest {
         }
 
         @Override
-        public void added(List<Provider> newList) {
+        public boolean added(List<Provider> newList) {
             if (newList == null || newList.isEmpty()) {
-                return;
+                return true;
             }
             for (Provider provider : newList) {
                 providers.put(provider.getIp() + Constants.COLON + provider.getPort(), provider);
                 logger.info("Provider list add: " + newList);
             }
+            return true;
         }
 
         @Override
-        public void updated(List<Provider> updated) {
+        public boolean updated(List<Provider> updated) {
             for (Provider provider : updated) {
                 Provider old = providers.get(provider);
                 if (old != null) {
@@ -79,14 +80,16 @@ public class RegistryTest {
                     logger.info("Provider list update: {}", provider);
                 }
             }
+            return true;
         }
 
         @Override
-        public void removed(List<String> ipPorts) {
+        public boolean removed(List<String> ipPorts) {
             for (String ipPort : ipPorts) {
                 Provider removed = providers.remove(ipPort);
                 logger.info("Provider list removed: {}", removed);
             }
+            return true;
         }
 
         public List<Provider> getProviders() {
@@ -107,6 +110,7 @@ public class RegistryTest {
         registryInfo.setWeight(10);
         registryInfo.setVersion(VersionUtil.getDoradoVersion());
         registryInfo.setEnv("test");
+        registryInfo.setRegistryGroup("/octo");
         registryInfo.setStatus(ProviderStatus.ALIVE.getCode());
         return registryInfo;
     }
@@ -118,6 +122,7 @@ public class RegistryTest {
         mnsSubscribeInfo.setServiceName("com.meituan.mtthrift.test.HelloService");
         mnsSubscribeInfo.setProtocol("thrift");
         mnsSubscribeInfo.setEnv("test");
+        mnsSubscribeInfo.setRegistryGroup("/octo");
 
         return mnsSubscribeInfo;
     }

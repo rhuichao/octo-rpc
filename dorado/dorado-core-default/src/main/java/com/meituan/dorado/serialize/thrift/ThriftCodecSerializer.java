@@ -88,13 +88,13 @@ public class ThriftCodecSerializer {
         return serializer.serialize(response);
     }
 
-    public static Object decodeThrift(byte[] buff, Map<String, Object> attachments) throws Exception {
+    public static Object decodeThrift(byte[] buff, int offset, int length, Map<String, Object> attachments) throws Exception {
         Class<?> iface = (Class<?>) attachments.get(Constants.SERVICE_IFACE);
         if (iface == null) {
             throw new ProtocolException("Origin thrift just support request serivce that has one service per port.");
         }
         ThriftMessageSerializer serializer = getSerializer(iface);
-        return serializer.deserialize4Thrift(buff, iface, attachments);
+        return serializer.deserialize4Thrift(buff, offset, length, iface, attachments);
     }
 
     public static byte[] encodeThrift(Object obj) throws Exception {

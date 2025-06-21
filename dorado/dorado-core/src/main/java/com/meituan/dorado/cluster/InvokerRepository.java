@@ -87,26 +87,29 @@ public class InvokerRepository<T> implements ProviderListener {
     }
 
     @Override
-    public void added(List<Provider> providers) {
-        updated(providers);
+    public boolean added(List<Provider> providers) {
+        return updated(providers);
     }
 
     @Override
-    public void updated(List<Provider> providers) {
+    public boolean updated(List<Provider> providers) {
         if (providers == null || providers.isEmpty()) {
-            return;
+            return true;
         }
         for (Provider provider : providers) {
             String ip = provider.getIp();
             int port = provider.getPort();
             String address = ip + Constants.COLON + port;
-            addOrUpdateInvokers(address, provider);
+            if(!addOrUpdateInvokers(address, provider)){
+                return false;
+            }
         }
         refreshInvokers();
+        return true;
     }
 
     @Override
-    public void removed(List<String> ipPorts) {
+    public boolean removed(List<String> ipPorts) {
         List<Invoker> unusedInvokers = new ArrayList<>();
         for (String address : invokerMap.keySet()) {
             if (ipPorts.contains(address)) {
@@ -116,6 +119,7 @@ public class InvokerRepository<T> implements ProviderListener {
         }
         refreshInvokers();
         destroyUnusedInvokers(unusedInvokers);
+        return true;
     }
 
     public void destroy() {
@@ -144,7 +148,7 @@ public class InvokerRepository<T> implements ProviderListener {
         }
     }
 
-    private void addOrUpdateInvokers(String address, Provider provider) {
+    private boolean addOrUpdateInvokers(String address, Provider provider) {
         Invoker invoker = invokerMap.get(address);
         if (invoker == null) {
             // 没有则构建新的invoker
@@ -154,6 +158,7 @@ public class InvokerRepository<T> implements ProviderListener {
                 logger.info("Add new provider {}", provider.toString());
             } catch (Exception e) {
                 logger.error("Build invoker failed", e);
+                return false;
             }
         } else {
             // 有则更新Provider
@@ -161,6 +166,7 @@ public class InvokerRepository<T> implements ProviderListener {
                logger.info("Update provider {}", provider.toString());
            }
         }
+        return true;
     }
 
     private void buildDirectConnInvokers() {

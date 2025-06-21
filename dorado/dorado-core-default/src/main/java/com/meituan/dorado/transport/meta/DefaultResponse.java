@@ -16,7 +16,7 @@
 package com.meituan.dorado.transport.meta;
 
 import com.meituan.dorado.bootstrap.invoker.ServiceInvocationRepository;
-import com.meituan.dorado.common.exception.TimeoutException;
+import com.meituan.dorado.common.exception.RequestTimeoutException;
 import com.meituan.dorado.rpc.meta.RpcResult;
 import com.meituan.dorado.serialize.thrift.ThriftMessageSerializer.ThriftMessageInfo;
 import com.meituan.dorado.util.CompressUtil;
@@ -77,7 +77,7 @@ public class DefaultResponse implements Response {
 
     private void initField(DefaultRequest request) {
         if (request == null) {
-            throw new TimeoutException("Request has removed, cause Timeout happened earlier.");
+            throw new RequestTimeoutException("Request has removed, cause Timeout happened earlier.");
         }
         this.seq = request.getSeq();
         this.serviceName = request.getServiceName();

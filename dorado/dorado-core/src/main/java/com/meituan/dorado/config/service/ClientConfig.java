@@ -46,6 +46,10 @@ public class ClientConfig extends AbstractConfig {
 
     private boolean enableHttpServer;
     private boolean timelineTrace;
+    /**
+     * 扩展参数
+     */
+    private Map<String, Object> extParms;
 
     // 兼容bean配置, 也可以SPI配置
     private List<Filter> filters;
@@ -66,6 +70,7 @@ public class ClientConfig extends AbstractConfig {
         this.filters = config.getFilters();
         this.timelineTrace = config.isTimelineTrace();
         this.failoverRetryTimes = config.getFailoverRetryTimes();
+        this.extParms = config.getExtParms();
         if (directConnAddress != null && !directConnAddress.isEmpty()) {
             // 直连时 remoteOctoProtocol 才生效
             this.remoteOctoProtocol = config.isRemoteOctoProtocol();
@@ -216,5 +221,13 @@ public class ClientConfig extends AbstractConfig {
 
     public boolean isRemoteOctoProtocol() {
         return remoteOctoProtocol;
+    }
+
+    public Map<String, Object> getExtParms() {
+        return extParms;
+    }
+
+    public void setExtParms(Map<String, Object> extParms) {
+        this.extParms = extParms;
     }
 }

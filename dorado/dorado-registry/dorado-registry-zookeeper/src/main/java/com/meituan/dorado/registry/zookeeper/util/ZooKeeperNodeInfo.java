@@ -26,18 +26,23 @@ import com.meituan.dorado.registry.meta.SubscribeInfo;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * 注册路径：/octo/nameservice/{env}/{appkey}/provider/{ip:port}
+ * Provider注册路径：/{registryGroup}/{appkey}/provider/{ip:port}
+ *
+ * Consumer 注册路径：/{registryGroup}/{appkey}/consumer/{ip:pid}
  */
 public class ZooKeeperNodeInfo {
 
     public static final String ROOT_NAME = "octo/nameservice";
     public static final String PATH_SEPARATOR = "/";
     public static final String PROVIDER = "provider";
+    public static final String CONSUMER = "consumer";
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -132,4 +137,30 @@ public class ZooKeeperNodeInfo {
         }
         return serviceDetailMap;
     }
+
+
+    public static String genConsumerNodeData(SubscribeInfo info) throws JsonProcessingException {
+        ChildNodeData nodeData = new ChildNodeData();
+        nodeData.setAppkey(info.getLocalAppkey());
+        nodeData.setProtocol(info.getProtocol());
+        nodeData.setLastUpdateTime(System.currentTimeMillis() / 1000);
+        String nodeDataStr = objectMapper.writeValueAsString(nodeData);
+        return nodeDataStr;
+    }
+
+    private static int PID = -1;
+
+    public static int getPid() {
+        if (PID < 0) {
+            try {
+                RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
+                String name = runtime.getName(); // format: "pid@hostname"
+                PID = Integer.parseInt(name.substring(0, name.indexOf('@')));
+            } catch (Throwable e) {
+                PID = 0;
+            }
+        }
+        return PID;
+    }
+
 }

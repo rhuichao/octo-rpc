@@ -22,9 +22,7 @@ import com.meituan.dorado.rpc.handler.invoker.Invoker;
 import com.meituan.dorado.transport.AbstractClient;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
@@ -39,7 +37,6 @@ public class NettyClient extends AbstractClient {
     private static final Logger logger = LoggerFactory.getLogger(NettyClient.class);
 
     private static final NioEventLoopGroup WORKER_GROUP = new NioEventLoopGroup(Constants.DEFAULT_IO_WORKER_THREAD_COUNT, new DefaultThreadFactory("DoradoClientNettyWorkerGroup", true));
-
     private Bootstrap bootstrap;
     // 目前只支持一个Channel TODO 后续考虑连接池
     private volatile NettyChannel channel;
@@ -66,6 +63,7 @@ public class NettyClient extends AbstractClient {
                 .channel(NioSocketChannel.class)
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.TCP_NODELAY, true)
+               // .option(ChannelOption.AUTO_READ, true)
                 .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connTimeout)
                 .handler(new ChannelInitializer<NioSocketChannel>() {

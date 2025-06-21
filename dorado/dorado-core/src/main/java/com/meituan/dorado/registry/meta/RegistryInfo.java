@@ -21,6 +21,7 @@ import java.util.Map;
 
 public class RegistryInfo extends Provider {
 
+    private String registryGroup;
     private List<String> serviceNames;
     private Map<String, String> attachments = new HashMap<>();
 
@@ -40,6 +41,14 @@ public class RegistryInfo extends Provider {
         this.attachments = attachments;
     }
 
+    public String getRegistryGroup() {
+        return registryGroup;
+    }
+
+    public void setRegistryGroup(String registryGroup) {
+        this.registryGroup = registryGroup;
+    }
+
     @Override
     public String toString() {
         StringBuilder info = new StringBuilder();
@@ -52,6 +61,7 @@ public class RegistryInfo extends Provider {
                 .append(",env=").append(getEnv())
                 .append(",version=").append(getVersion())
                 .append(",attachments=").append(attachments)
+                .append(",registryGroup=").append(registryGroup)
                 .append("}");
         return info.toString();
     }

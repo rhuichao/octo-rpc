@@ -54,15 +54,18 @@ public class FailbackRegistryTest {
             }
 
             @Override
-            public void added(List<Provider> providers) {
+            public boolean added(List<Provider> providers) {
+                return true;
             }
 
             @Override
-            public void updated(List<Provider> providers) {
+            public boolean updated(List<Provider> providers) {
+                return true;
             }
 
             @Override
-            public void removed(List<String> ipPorts) {
+            public boolean removed(List<String> ipPorts) {
+                return true;
             }
         });
         registry.doUnsubcribe(info);
