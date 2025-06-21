@@ -84,3 +84,7 @@ mvn clean package -Dmaven.test.skip=true
     </plugins>
 </build>
 ```
+
+- 更新父模块的版本号：mvn versions:set -DnewVersion=1.0.1-SNAPSHOT
+- mvn clean install -Dmaven.test.skip=true -pl -dorado-registry/dorado-registry-mns,-dorado-trace/dorado-trace-cat
+- cd dorado-build && mvn clean install/deploy -Dmaven.test.skip=true
